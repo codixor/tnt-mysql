@@ -221,13 +221,19 @@ lua_mysql_push_value(struct lua_State *L, MYSQL_FIELD *field, void *data,
 			break;
 
 		case MYSQL_TYPE_LONGLONG: {
-				long long v = atoll(data);
+			char *endptr;
+			long long v = strtoll(data, &endptr, 10);
+			if (endptr == data || *endptr != '\0') {
+				// Handle error: conversion failed
+				lua_pushnil(L);
+			} else {
 				if (field->flags & UNSIGNED_FLAG) {
-					luaL_pushuint64(L, v);
+					luaL_pushuint64(L, (unsigned long long)v);
 				} else {
 					luaL_pushint64(L, v);
 				}
-				break;
+			}
+			break;
 		}
 
 		/* AS string */
@@ -648,7 +654,7 @@ lua_mysql_connect(struct lua_State *L)
 		usocket = port;
 		host = NULL;
 	} else if (port != NULL) {
-		iport = atoi(port); /* 0 is ok */
+		iport = strtol(port, NULL, 10); // safer alternative to atoi
 	}
 
 	mysql_options(tmp_raw_conn, MYSQL_OPT_IO_WAIT, mysql_wait_for_io);
